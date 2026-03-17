@@ -1,8 +1,10 @@
+import importlib
 from logging import getLogger
 
 from discord import Interaction
 from discord.app_commands import (
     AppCommandError,
+    CheckFailure,
     CommandInvokeError as AppCommandInvokeError,
     CommandLimitReached,
     CommandSyncFailure,
@@ -17,8 +19,15 @@ from discord.ext.commands import (
     CommandInvokeError
 )
 
-from bot.exceptions import CantMessage, FailedSync, MissingRequiredScope
-from bot.utils import fmt_traceback_message
+import bot.utils as utils
+importlib.reload(utils)
+
+import bot.exceptions as exceptions
+
+modules = (exceptions,)
+
+for mod in modules:
+    utils.recursive_reload(mod)
 
 logger = getLogger('error_handler')
 
@@ -33,11 +42,6 @@ class ErrorHandler(Cog):
 
     @Cog.listener()
     async def on_command_error(self, ctx: Context, error: CommandError):
-        # Ignore commands with their own error handlers.
-        if hasattr(ctx.command, 'on_error') and\
-        not getattr(error, 'ignore_local_handler', False):
-            return
-
         async def send_message(message: str) -> None:
             logger.error(message)
             await ctx.send(f'**ERROR**: {message}')
@@ -45,7 +49,12 @@ class ErrorHandler(Cog):
         if isinstance(error, CommandInvokeError):
             error = error.original
 
-        if isinstance(error, CantMessage):
+        # Ignore commands with their own error handlers.
+        if hasattr(ctx.command, 'on_error') and\
+        not getattr(error, 'ignore_local_handler', False):
+            return
+
+        if isinstance(error, exceptions.CantMessage):
             logger.error(
                 f'Cannot message in channel: {error.channel.name}'
             )
@@ -57,7 +66,7 @@ class ErrorHandler(Cog):
 
             return
 
-        if isinstance(error, FailedSync):
+        if isinstance(error, exceptions.FailedSync):
             return await send_message(
                 'Unexpected error happened syncing commands. Sync them later.'
             )
@@ -74,7 +83,7 @@ class ErrorHandler(Cog):
 
         message = 'Unhandled exception occured during command execution:'
         logger.error(
-            fmt_traceback_message(error, message)
+            utils.fmt_traceback_message(error, message)
         )
 
     async def on_app_command_error(
@@ -82,6 +91,9 @@ class ErrorHandler(Cog):
         interaction: Interaction,
         error: AppCommandError
     ):
+        if isinstance(error, (AppCommandInvokeError, CheckFailure)):
+            error = error.original if hasattr(error, 'original') else error
+
         if hasattr(interaction.command, 'on_error') and\
         not getattr(error, 'ignore_local_handler', False):
             return
@@ -92,10 +104,10 @@ class ErrorHandler(Cog):
                 ephemeral = True
             )
 
-        if isinstance(error, AppCommandInvokeError):
-            error = error.original
+        if isinstance(error, exceptions.HasRole):
+            return await send_message('You already have a role!')
 
-        if isinstance(error, MissingRequiredScope):
+        if isinstance(error, exceptions.MissingRequiredScope):
             return await send_message(
                 f'I have a missing {error.scope} scope.'\
                 'Please re-invite me with that scope enabled!'
@@ -112,7 +124,7 @@ class ErrorHandler(Cog):
             await send_message('Ran into an error translating this command.')
 
         message = 'Unhandled exception occured during slash command execution:'
-        logger.error(fmt_traceback_message(error, message))
+        logger.error(utils.fmt_traceback_message(error, message))
 
 async def setup(bot: Bot):
     await bot.add_cog(ErrorHandler(bot))

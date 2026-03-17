@@ -1,11 +1,21 @@
+import importlib
+
 from discord import Forbidden, HTTPException
 from discord.ext.commands import Bot, Cog, Context, command, is_owner
 
-from bot import MyBot
-from bot.exceptions import CantMessage, FailedSync, MissingRequiredScope
+import bot.utils as utils
+importlib.reload(utils)
+
+import bot
+import bot.exceptions as exceptions
+
+modules = (bot, exceptions,)
+
+for mod in modules:
+    utils.recursive_reload(mod)
 
 class ManageCommands(Cog):
-    def __init__(self, bot: MyBot):
+    def __init__(self, bot: bot.MyBot):
         self.bot = bot
 
     @command()
@@ -36,14 +46,14 @@ class ManageCommands(Cog):
         try:
             await self.bot.tree.sync(guild = guild)
         except Forbidden as exception:
-            raise MissingRequiredScope('application.commands') from exception
+            raise exceptions.MissingRequiredScope('application.commands') from exception
         except HTTPException as exception:
-            raise FailedSync(getattr(guild, 'id')) from exception
+            raise exceptions.FailedSync(getattr(guild, 'id')) from exception
 
         try:
             await ctx.send(message)
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessaeg(ctx.channel) from exception
 
     @command()
     @is_owner()
@@ -61,15 +71,15 @@ class ManageCommands(Cog):
         try:
             await ctx.send('Successfully cleared all commands.')
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessage(ctx.channel) from exception
 
         try:
             await self.bot.tree.sync()
             await self.bot.tree.sync(guild = ctx.guild)
         except Forbidden as exception:
-            raise MissingRequiredScope('application.commands') from exception
+            raise exceptions.MissingRequiredScope('application.commands') from exception
         except HTTPException as exception:
-            raise FailedSync(ctx.guild) from exception
+            raise exceptions.FailedSync(ctx.guild) from exception
 
 async def setup(bot: Bot):
     await bot.add_cog(ManageCommands(bot))

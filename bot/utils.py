@@ -1,13 +1,20 @@
 from collections.abc import Generator
+from importlib import reload
 from pathlib import Path
 from traceback import format_exception
+from types import ModuleType
+from sys import modules
 from typing import Any
 
 from config import EXTENSIONS_PATH
 
 ROOT = Path()
 
-def fmt_traceback_message(error: Exception, existing_message: str) -> str:
+def fmt_traceback_message(
+    error: Exception,
+    existing_message: str,
+    limit: bool = True
+) -> str:
     """
     Formats message and returns with exception in a traceback.
 
@@ -19,8 +26,10 @@ def fmt_traceback_message(error: Exception, existing_message: str) -> str:
     tb = ''.join(tb_lines)
     max_tb_length = 1950 - len(existing_message)
 
-    if len(tb) > max_tb_length:
+    if len(tb) > max_tb_length and limit:
         tb = f'{tb[:max_tb_length]}...\n[Traceback truncated]'
+    else:
+        tb = tb
 
     message = f'{existing_message}\n```py\n{tb}```'
 
@@ -52,3 +61,19 @@ def iterate_extensions() -> Generator[str, Any, Any]:
         if path.parent.name == '__pycache__':   continue
 
         yield get_extension_name(path)
+
+def recursive_reload(module: ModuleType) -> None:
+    """
+    Recursively reloads sub-modules and module itself for a given module.
+    """
+    reload(module)
+
+    prefix = f'{module.__name__}.'
+
+    sub_modules = [
+        mod for name, mod in modules.items()
+        if name.startswith(prefix) and isinstance(mod, ModuleType)
+    ]
+
+    for mod in sub_modules:
+        reload(mod)

@@ -1,3 +1,4 @@
+import importlib
 from collections.abc import Callable, Mapping
 from logging import getLogger
 from typing import Any, Optional
@@ -14,8 +15,15 @@ from discord.ext.commands import (
 )
 from discord.ui import Button, View, button
 
-from bot.exceptions import CantMessage
-from bot.utils import fmt_traceback_message
+import bot.utils as utils
+importlib.reload(utils)
+
+import bot.exceptions as exceptions
+
+modules = (exceptions,)
+
+for mod in modules:
+    utils.recursive_reload(mod)
 
 logger = getLogger('help_command')
 
@@ -129,7 +137,7 @@ class PrettierHelpCommand(HelpCommand):
         await super().on_help_command_error(ctx, error)
 
         logger.error(
-            fmt_traceback_message(
+            utils.fmt_traceback_message(
                 error,
                 'Unexpected error occured during display of help page:'
             )
@@ -165,7 +173,7 @@ class PrettierHelpCommand(HelpCommand):
         try:
             message = await channel.send(embed = pages[0], view = view)
         except Forbidden as exception:
-            raise CantMessage(channel.id) from exception
+            raise exceptions.CantMessage(channel.id) from exception
 
         view.message = message
 
@@ -198,7 +206,7 @@ class PrettierHelpCommand(HelpCommand):
         try:
             await channel.send(embed = pages[0], view = view)
         except Forbidden as exception:
-            raise CantMessage(channel.id) from exception
+            raise exceptions.CantMessage(channel.id) from exception
 
     async def send_command_help(self, command: Command):
         e = Embed(
@@ -228,7 +236,7 @@ class PrettierHelpCommand(HelpCommand):
         try:
             await channel.send(embed = e)
         except Forbidden as exception:
-            raise CantMessage(channel.id) from exception
+            raise exceptions.CantMessage(channel.id) from exception
 
     async def send_group_help(self, group: Group):
         """
@@ -259,7 +267,7 @@ class PrettierHelpCommand(HelpCommand):
         try:
             await channel.send(embed = pages[0], view = view)
         except Forbidden as exception:
-            raise CantMessage(channel.id) from exception
+            raise exceptions.CantMessage(channel.id) from exception
 
 class HelpCommandCog(Cog):
     def __init__(self, bot: Bot):

@@ -1,3 +1,4 @@
+import importlib
 from logging import getLogger
 
 from discord import Forbidden
@@ -17,14 +18,21 @@ from discord.ext.commands import (
     is_owner
 )
 
-from bot import MyBot
-from bot.exceptions import CantMessage
-from ..utils import fmt_traceback_message, get_partial_name
+import bot.utils as utils
+importlib.reload(utils)
+
+import bot
+import bot.exceptions as exceptions
+
+modules = (bot, exceptions,)
+
+for mod in modules:
+    utils.recursive_reload(mod)
 
 logger = getLogger('manage_extensions')
 
 class ManageExtensions(Cog):
-    def __init__(self, bot: MyBot):
+    def __init__(self, bot: bot.MyBot):
         self.bot = bot
 
     @classmethod
@@ -44,7 +52,7 @@ class ManageExtensions(Cog):
                 for extension in self.bot.extensions.keys())
             )
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessage(ctx.channel) from exception
 
     @command()
     @is_owner()
@@ -53,7 +61,7 @@ class ManageExtensions(Cog):
         Loads given extension.
         Example: !load manage_extensions
         """
-        extension = get_partial_name(name)
+        extension = utils.get_partial_name(name)
 
         if not extension:
             raise ExtensionNotFound(name)
@@ -65,7 +73,7 @@ class ManageExtensions(Cog):
                 f'Successfully loaded extension: `{extension}`'
             )
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessage(ctx.channel) from exception
 
     @load.error
     async def load_error(self, ctx: Context, error: CommandError):
@@ -81,7 +89,7 @@ class ManageExtensions(Cog):
             )
         elif isinstance(error, (ExtensionFailed, NoEntryPointError)):
             message = 'Extension source isn\'t complete.'
-            message = fmt_traceback_message(error, message)
+            message = utils.fmt_traceback_message(error, message)
             return await ManageExtensions.send_error_message(ctx, message)
         elif isinstance(error, ExtensionNotFound):
             return await ManageExtensions.send_error_message(
@@ -99,7 +107,7 @@ class ManageExtensions(Cog):
         Reloads given extension.
         Example: !reload manage_extensions
         """
-        extension = get_partial_name(name)
+        extension = utils.get_partial_name(name)
 
         if not extension:
             raise ExtensionNotFound(name)
@@ -109,7 +117,7 @@ class ManageExtensions(Cog):
         try:
             await ctx.send(f'Extension: `{extension}`: successfully reloaded')
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessage(ctx.channel) from exception
 
     @reload.error
     async def reload_error(self, ctx: Context, error: CommandError):
@@ -120,7 +128,7 @@ class ManageExtensions(Cog):
 
         if isinstance(error, (ExtensionFailed, NoEntryPointError)):
             message = f'Failed to reload: `{name}`: check extension source.'
-            message = fmt_traceback_message(error, message)
+            message = utils.fmt_traceback_message(error, message)
 
             return await ManageExtensions.send_error_message(ctx, message)
         elif isinstance(error, ExtensionNotFound):
@@ -154,7 +162,7 @@ class ManageExtensions(Cog):
 
                 completed.add(extension)
             except ExtensionError as error:
-                message = fmt_traceback_message(error, 'Reload all command failed:')
+                message = utils.fmt_traceback_message(error, 'Reload all command failed:')
                 logger.error(message)
 
                 failed.add(extension)
@@ -173,7 +181,7 @@ class ManageExtensions(Cog):
         try:
             await ctx.send(message)
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessage(ctx.channel) from exception
 
     @command()
     @is_owner()
@@ -182,7 +190,7 @@ class ManageExtensions(Cog):
         Unloads given extension.
         Example: !unload manage_extensions
         """
-        extension = get_partial_name(name)
+        extension = utils.get_partial_name(name)
 
         if not extension:
             raise ExtensionNotFound(name)
@@ -194,7 +202,7 @@ class ManageExtensions(Cog):
                 f'Extension: `{name}`: successfully unloaded'
             )
         except Forbidden as exception:
-            raise CantMessage(ctx.channel) from exception
+            raise exceptions.CantMessage(ctx.channel) from exception
 
     @unload.error
     async def unload_error(self, ctx: Context, error: CommandError):
