@@ -6,7 +6,7 @@ from types import ModuleType
 from sys import modules
 from typing import Any
 
-from config import EXTENSIONS_PATH
+from config import EXTENSIONS_PATH, SKIP_RELOAD
 
 ROOT = Path()
 
@@ -66,13 +66,17 @@ def recursive_reload(module: ModuleType) -> None:
     """
     Recursively reloads sub-modules and module itself for a given module.
     """
+    if module.__name__ in SKIP_RELOAD:
+        return
+
     reload(module)
 
     prefix = f'{module.__name__}.'
 
     sub_modules = [
         mod for name, mod in modules.items()
-        if name.startswith(prefix) and isinstance(mod, ModuleType)
+        if name.startswith(prefix) and isinstance(mod, ModuleType) and
+        name not in SKIP_RELOAD
     ]
 
     for mod in sub_modules:
