@@ -40,23 +40,48 @@ class ErrorHandler(Cog):
         self.bot = bot
         self.bot.tree.on_error = self.on_app_command_error
 
+    @classmethod
+    async def send_message(
+        cls,
+        ctx: Context,
+        error: CommandError,
+        message: str
+    ) -> None:
+        log_message = 'Error happened during command execution: '\
+        f'{ctx.command} | {ctx.author}: {utils.get_traceback(error)}'
+
+        logger.error(log_message)
+        await ctx.send(f'**ERROR**: {message}')
+
+    async def send_interaction_message(
+        cls,
+        interaction: Interaction,
+        error: AppCommandError,
+        message: str
+    ) -> None:
+        log_message = 'Error happened during app command execution: '\
+        f'{interaction.command} | {interaction.user}: '\
+        f'{utils.get_traceback(error)}'
+
+        logger.error(log_message)
+        await interaction.response.send_message(
+            f'**ERROR**: {message}',
+            ephemeral = True
+        )
+
     @Cog.listener()
     async def on_command_error(self, ctx: Context, error: CommandError):
-        async def send_message(message: str) -> None:
-            logger.error(message)
-            await ctx.send(f'**ERROR**: {message}')
-
         if isinstance(error, CommandInvokeError):
             error = error.original
 
+        if getattr(error, 'ignore_local_handler', False):
+            pass
         # Ignore commands with their own error handlers.
-        if hasattr(ctx.command, 'on_error') and\
-        not getattr(error, 'ignore_local_handler', False):
-            return
+        elif hasattr(ctx.command, 'on_error'):    return
 
         if isinstance(error, exceptions.CantMessage):
             logger.error(
-                f'Cannot message in channel: {error.channel.name}'
+                f'Cannot message in channel: {error.channel}'
             )
 
             if can_react(ctx):
@@ -67,24 +92,30 @@ class ErrorHandler(Cog):
             return
 
         if isinstance(error, exceptions.FailedSync):
-            return await send_message(
+            return await ErrorHandler.send_message(
+                ctx,
+                error,
                 'Unexpected error happened syncing commands. Sync them later.'
             )
 
         if isinstance(error, CommandLimitReached):
-            return await send_message(
+            return await ErrorHandler.send_message(
+                ctx,
+                error,
                 'There are way too many commands to push to a guild.'
             )
 
         if isinstance(error, CommandSyncFailure):
-            return await send_message(
+            return await ErrorHandler.send_message(
+                ctx,
+                error,
                 'Ensure all synced commands have finished source.'
             )
 
-        message = 'Unhandled exception occured during command execution:'
-        logger.error(
-            utils.fmt_traceback_message(error, message)
-        )
+        message = 'Unexpected error happened during command execution: '\
+        f'{ctx.command} | {ctx.author}: {utils.get_traceback(error)}'
+
+        logger.error(message)
 
     async def on_app_command_error(
         self,
@@ -98,17 +129,17 @@ class ErrorHandler(Cog):
         not getattr(error, 'ignore_local_handler', False):
             return
 
-        async def send_message(message: str) -> None:
-            await interaction.response.send_message(
-                f'**ERROR**: {message}',
-                ephemeral = True
+        if isinstance(error, exceptions.HasRole):
+            return await ErrorHandler.send_interaction_message(
+                interaction,
+                error,
+                'You already have a role!'
             )
 
-        if isinstance(error, exceptions.HasRole):
-            return await send_message('You already have a role!')
-
         if isinstance(error, exceptions.MissingRequiredScope):
-            return await send_message(
+            return await ErrorHandler.send_interaction_message(
+                interaction,
+                error,
                 f'I have a missing {error.scope} scope.'\
                 'Please re-invite me with that scope enabled!'
             )
@@ -121,10 +152,17 @@ class ErrorHandler(Cog):
                 f'Translation failed for locale: {error.locale}; '\
                 f'Message: {error.string}'
             )
-            await send_message('Ran into an error translating this command.')
+            await ErrorHandler.send_interaction_message(
+                interaction,
+                error,
+                'Ran into an error translating this command.'
+            )
 
-        message = 'Unhandled exception occured during slash command execution:'
-        logger.error(utils.fmt_traceback_message(error, message))
+        message = 'Unexpected error happened during app command execution: '\
+        f'{interaction.command} | User: {interaction.user}: '\
+        f'{utils.get_traceback(error)}'
+
+        logger.error(message)
 
 async def setup(bot: Bot):
     await bot.add_cog(ErrorHandler(bot))

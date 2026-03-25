@@ -34,11 +34,25 @@ logger = getLogger('manage_extensions')
 class ManageExtensions(Cog):
     def __init__(self, bot: bot.MyBot):
         self.bot = bot
+        self.error_handler = bot.get_cog('ErrorHandler')
 
-    @classmethod
-    async def send_error_message(cls, ctx: Context, message: str) -> None:
-        logger.error(message)
-        await ctx.send(f'**ERROR**: {message}')
+    async def send_error_message(
+        self,
+        ctx: Context,
+        error: CommandError,
+        message: str
+    ) -> None:
+        logger.error(
+            f'Command error happened: {ctx.command}: '\
+            f'{utils.get_traceback(error)}'
+        )
+
+        try:
+            await ctx.send(f'**ERROR**: {message}')
+        except Forbidden:
+            exception = exceptions.CantMessage(ctx.channel)
+
+            await self.error_handler.on_command_error(ctx, exception)
 
     @command()
     @is_owner()
@@ -83,17 +97,23 @@ class ManageExtensions(Cog):
         name = getattr(error, 'name', 'Unknown')
 
         if isinstance(error, ExtensionAlreadyLoaded):
-            return await ManageExtensions.send_error_message(
+            return await self.send_error_message(
                 ctx,
+                error,
                 'Extension is already loaded.'
             )
         elif isinstance(error, (ExtensionFailed, NoEntryPointError)):
             message = 'Extension source isn\'t complete.'
             message = utils.fmt_traceback_message(error, message)
-            return await ManageExtensions.send_error_message(ctx, message)
-        elif isinstance(error, ExtensionNotFound):
-            return await ManageExtensions.send_error_message(
+            return await self.send_error_message(
                 ctx,
+                error,
+                message
+            )
+        elif isinstance(error, ExtensionNotFound):
+            return await self.send_error_message(
+                ctx,
+                error,
                 f'Extension: `{name}`: can\'t be found.'
             )
 
@@ -130,15 +150,21 @@ class ManageExtensions(Cog):
             message = f'Failed to reload: `{name}`: check extension source.'
             message = utils.fmt_traceback_message(error, message)
 
-            return await ManageExtensions.send_error_message(ctx, message)
-        elif isinstance(error, ExtensionNotFound):
-            return await ManageExtensions.send_error_message(
+            return await self.send_error_message(
                 ctx,
+                error,
+                message
+            )
+        elif isinstance(error, ExtensionNotFound):
+            return await self.send_error_message(
+                ctx,
+                error,
                 f'Extension: `{name}`: can\'t be found.'
             )
         elif isinstance(error, ExtensionNotLoaded):
-            return await ManageExtensions.send_error_message(
+            return await self.send_error_message(
                 ctx,
+                error,
                 f'Extension: `{name}`: isn\'t loaded.'
             )
 
@@ -162,7 +188,8 @@ class ManageExtensions(Cog):
 
                 completed.add(extension)
             except ExtensionError as error:
-                message = utils.fmt_traceback_message(error, 'Reload all command failed:')
+                message = utils.get_traceback(error)
+                message = f'{ctx.command} failed: {message}'
                 logger.error(message)
 
                 failed.add(extension)
@@ -212,13 +239,15 @@ class ManageExtensions(Cog):
         name = getattr(error, 'name', 'Unknown')
 
         if isinstance(error, ExtensionNotFound):
-            return await ManageExtensions.send_error_message(
+            return await self.send_error_message(
                 ctx,
+                error,
                 f'Extension: `{name}`: can\'t be found.'
             )
         elif isinstance(error, ExtensionNotLoaded):
-            return await ManageExtensions.send_error_message(
+            return await self.send_error_message(
                 ctx,
+                error,
                 f'Extension: `{name}`: isn\'t loaded.'
             )
 

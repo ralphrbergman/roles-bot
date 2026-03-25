@@ -10,20 +10,26 @@ from config import EXTENSIONS_PATH, SKIP_RELOAD
 
 ROOT = Path()
 
+def get_traceback(error: Exception) -> str:
+    """ Returns traceback of exception. """
+    return ''.join(
+        format_exception(type(error), error, error.__traceback__)
+    )
+
 def fmt_traceback_message(
     error: Exception,
     existing_message: str,
     limit: bool = True
 ) -> str:
     """
-    Formats message and returns with exception in a traceback.
+    Returns formatted exception traceback with
+    message prefixed for display within Discord.
 
     Args:
         error: Exception to display.
         existing_message: Existing message to account for with traceback.
     """
-    tb_lines = format_exception(type(error), error, error.__traceback__)
-    tb = ''.join(tb_lines)
+    tb = get_traceback(error)
     max_tb_length = 1950 - len(existing_message)
 
     if len(tb) > max_tb_length and limit:

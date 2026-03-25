@@ -137,11 +137,12 @@ class PrettierHelpCommand(HelpCommand):
         await super().on_help_command_error(ctx, error)
 
         logger.error(
-            utils.fmt_traceback_message(
-                error,
-                'Unexpected error occured during display of help page:'
-            )
+            'Unexpected error happened during help command display: '\
+            f'{utils.get_traceback(error)}'
         )
+
+        error_handler = ctx.bot.get_cog('ErrorHandler')
+        await error_handler.on_command_error(ctx, error)
 
     async def send_bot_help(
         self,
