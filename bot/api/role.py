@@ -21,7 +21,7 @@ async def get_role(
     guild_id: int,
     session: AsyncSession
 ) -> RoleDB | None:
-    return await session.execute(
+    return await session.scalar(
         select(RoleDB)
         .where(RoleDB.user_id == user_id, RoleDB.guild_id == guild_id)
     )

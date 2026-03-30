@@ -16,7 +16,7 @@ async def delete_guild(guild: GuildDB, session: AsyncSession) -> None:
     await session.commit()
 
 async def get_guild(guild_id: int, session: AsyncSession) -> GuildDB | None:
-    return await session.execute(
+    return await session.scalar(
         select(GuildDB)
         .where(GuildDB.guild_id == guild_id)
     )
