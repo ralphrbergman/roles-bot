@@ -13,7 +13,7 @@ class GuildHandler(Cog):
     def __init__(self, bot: RolesBot):
         self.bot = bot
 
-    async def cog_load(self):
+    async def init_guilds(self) -> None:
         await self.bot.wait_until_ready()
 
         async for session in get_session():
@@ -24,6 +24,9 @@ class GuildHandler(Cog):
                     continue
 
                 instance = await create_guild(guild.id, session)
+
+    async def cog_load(self):
+        self.bot.loop.create_task(self.init_guilds())
 
     @Cog.listener()
     async def on_guild_join(self, guild: Guild):
