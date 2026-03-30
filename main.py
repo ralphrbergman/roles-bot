@@ -1,6 +1,6 @@
 from logging import getLogger, INFO
 
-from bot import MyBot
+from bot import RolesBot
 from config import DISCORD_TOKEN, PREFIX
 from logger import f_hdlr, s_hdlr
 
@@ -12,7 +12,7 @@ def main() -> None:
     logger.setLevel(INFO)
 
     # Setup bot and run it.
-    bot = MyBot(command_prefix = PREFIX)
+    bot = RolesBot(command_prefix = PREFIX)
     bot.run(DISCORD_TOKEN, log_handler = None)
 
 if __name__ == '__main__':

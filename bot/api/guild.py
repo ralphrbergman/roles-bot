@@ -11,6 +11,10 @@ async def create_guild(guild_id: int, session: AsyncSession) -> GuildDB:
 
     return guild
 
+async def delete_guild(guild: GuildDB, session: AsyncSession) -> None:
+    await session.delete(guild)
+    await session.commit()
+
 async def get_guild(guild_id: int, session: AsyncSession) -> GuildDB | None:
     return await session.execute(
         select(GuildDB)

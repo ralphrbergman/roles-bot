@@ -1,1 +1,1 @@
-from .bot import MyBot
+from .bot import RolesBot

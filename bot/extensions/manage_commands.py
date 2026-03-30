@@ -15,7 +15,7 @@ for mod in modules:
     utils.recursive_reload(mod)
 
 class ManageCommands(Cog):
-    def __init__(self, bot: bot.MyBot):
+    def __init__(self, bot: bot.RolesBot):
         self.bot = bot
 
     @command()

@@ -15,7 +15,7 @@ from .utils import fmt_traceback_message, iterate_extensions
 
 logger = getLogger('client')
 
-class MyBot(Bot):
+class RolesBot(Bot):
     def __init__(self, command_prefix: str):
         intents = Intents.default()
         intents.message_content = True

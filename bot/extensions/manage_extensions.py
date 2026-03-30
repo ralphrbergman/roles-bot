@@ -32,7 +32,7 @@ for mod in modules:
 logger = getLogger('manage_extensions')
 
 class ManageExtensions(Cog):
-    def __init__(self, bot: bot.MyBot):
+    def __init__(self, bot: bot.RolesBot):
         self.bot = bot
         self.error_handler = bot.get_cog('ErrorHandler')
 
